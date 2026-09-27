@@ -2,6 +2,8 @@
 #include <string>
 #include <fstream>
 #include <filesystem>
+#include <vector>
+
 using namespace std;
 namespace fs = std::filesystem;
 
@@ -13,17 +15,51 @@ void init() {
         return;
     }
 
-    // TODO 1: create the .minigit directory
     fs::create_directory(REPO_DIR);
-
-    // TODO 2: create .minigit/objects
     fs::create_directory(REPO_DIR + "/objects");
 
-    // TODO 3: create an empty file .minigit/index
     ofstream indexFile(REPO_DIR + "/index");
     indexFile.close();
 
     cout << "Initialized empty MiniGit repository." << endl;
+}
+
+void add(const string &filename) {
+    if (!fs::exists(REPO_DIR)) {
+        cout << "Not a minigit repository. Run 'minigit init' first." << endl;
+        return;
+    }
+
+    if (!fs::exists(filename)) {
+        cout << "File not found: " << filename << endl;
+        return;
+    }
+
+    // 1. Read the index into a vector<string>
+    vector<string> staged;
+    ifstream in(REPO_DIR + "/index");
+
+    string line;
+    while (getline(in, line)) {
+        staged.push_back(line);
+    }
+
+    in.close();
+
+    // 2. Check if filename is already staged
+    for (const string &file : staged) {
+        if (file == filename) {
+            cout << "Already staged: " << filename << endl;
+            return;
+        }
+    }
+
+    // 3. Append filename to the index file
+    ofstream out(REPO_DIR + "/index", ios::app);
+    out << filename << endl;
+    out.close();
+
+    cout << "Staged: " << filename << endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -36,7 +72,16 @@ int main(int argc, char *argv[]) {
 
     if (command == "init") {
         init();
-    } else {
+    }
+    else if (command == "add") {
+        if (argc < 3) {
+            cout << "Usage: minigit add <filename>" << endl;
+            return 1;
+        }
+
+        add(argv[2]);
+    }
+    else {
         cout << "Unknown command: " << command << endl;
     }
 
