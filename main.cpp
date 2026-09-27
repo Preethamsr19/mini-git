@@ -20,13 +20,9 @@ void init() {
         return;
     }
 
-    // Create .minigit
     fs::create_directory(REPO_DIR);
-
-    // Create .minigit/objects
     fs::create_directory(REPO_DIR + "/objects");
 
-    // Create empty index file
     ofstream indexFile(REPO_DIR + "/index");
     indexFile.close();
 
@@ -68,10 +64,8 @@ void add(const string &filename) {
         return;
     }
 
-    // Read the current staging area
     vector<string> staged = readIndex();
 
-    // Check if file is already staged
     for (const string &file : staged) {
         if (file == filename) {
             cout << "Already staged: " << filename << endl;
@@ -79,7 +73,6 @@ void add(const string &filename) {
         }
     }
 
-    // Add file to index
     ofstream out(REPO_DIR + "/index", ios::app);
 
     out << filename << endl;
@@ -123,10 +116,8 @@ void commit(const string &message) {
         return;
     }
 
-    // Read staged files
     vector<string> staged = readIndex();
 
-    // Nothing to commit
     if (staged.empty()) {
         cout << "Nothing to commit." << endl;
         return;
@@ -148,7 +139,7 @@ void commit(const string &message) {
 
     fs::create_directory(commitDir);
 
-    // Copy every staged file into the commit directory
+    // Copy staged files
     for (const string &filename : staged) {
 
         fs::copy_file(
@@ -158,12 +149,11 @@ void commit(const string &message) {
         );
     }
 
-    // Get current time
+    // Get timestamp
     time_t now = time(0);
 
     string timestamp = ctime(&now);
 
-    // Remove newline from timestamp
     if (!timestamp.empty() &&
         timestamp.back() == '\n') {
         timestamp.pop_back();
@@ -178,13 +168,65 @@ void commit(const string &message) {
 
     metadata.close();
 
-    // Clear staging area
-    // Opening without ios::app truncates the file
+    // Clear index
     ofstream clearIndex(REPO_DIR + "/index");
     clearIndex.close();
 
     cout << "Committed as " << id
          << ": " << message << endl;
+}
+
+// --------------------------------------------------
+// LOG
+// --------------------------------------------------
+
+void log() {
+    if (!fs::exists(REPO_DIR)) {
+        cout << "Not a minigit repository. Run 'minigit init' first." << endl;
+        return;
+    }
+
+    string objectsDir = REPO_DIR + "/objects";
+
+    // Count the number of commits
+    int count = 0;
+
+    for (const auto &entry :
+         fs::directory_iterator(objectsDir)) {
+
+        if (fs::is_directory(entry.path())) {
+            count++;
+        }
+    }
+
+    // No commits
+    if (count == 0) {
+        cout << "No commits yet." << endl;
+        return;
+    }
+
+    // Print newest commit first
+    for (int id = count; id >= 1; id--) {
+
+        string metadataPath =
+            objectsDir + "/" + to_string(id) + "/metadata.txt";
+
+        ifstream metadata(metadataPath);
+
+        if (!metadata) {
+            continue;
+        }
+
+        string line;
+
+        while (getline(metadata, line)) {
+            cout << line << endl;
+        }
+
+        metadata.close();
+
+        cout << endl;
+    }
 }
 
 // --------------------------------------------------
@@ -230,6 +272,11 @@ int main(int argc, char *argv[]) {
         }
 
         commit(argv[2]);
+    }
+
+    // LOG
+    else if (command == "log") {
+        log();
     }
 
     // UNKNOWN COMMAND
