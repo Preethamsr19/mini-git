@@ -1,0 +1,197 @@
+# MiniGit — A Lightweight Version Control System
+
+A version control system written from scratch in C++, implementing the core staging-and-snapshot workflow of Git using the C++17 filesystem library.
+
+## Build and Run
+
+### Compile
+
+```bash
+g++ -std=c++17 main.cpp -o minigit
+```
+
+### Initialize a repository
+
+```bash
+./minigit init
+```
+
+On Windows, you can use:
+
+```powershell
+.\minigit.exe init
+```
+
+## Commands
+
+* `init` — creates the `.minigit` repository with an objects store and a staging index
+* `add <file>` — stages a file for the next commit
+* `status` — lists currently staged files
+* `commit <message>` — snapshots all staged files into a new numbered commit with ID, message, and timestamp
+* `log` — prints commit history, newest first
+
+## How It Works
+
+MiniGit uses a simple repository structure inside the `.minigit` directory:
+
+```text
+.minigit/
+├── index
+└── objects/
+    ├── 1/
+    │   ├── metadata.txt
+    │   └── file1.txt
+    │
+    ├── 2/
+    │   ├── metadata.txt
+    │   └── file1.txt
+    │
+    └── 3/
+        ├── metadata.txt
+        └── file1.txt
+```
+
+### Staging Index
+
+The `.minigit/index` file acts as the **staging area**.
+
+When a file is added:
+
+```bash
+./minigit add test.txt
+```
+
+its filename is stored in the index:
+
+```text
+test.txt
+```
+
+`status` reads this file and displays the currently staged files.
+
+When a commit is created, MiniGit reads the index, copies the staged files into the new commit directory, and then clears the index.
+
+### Commit Snapshots
+
+Each commit receives a sequential numeric ID:
+
+```text
+.minigit/objects/1/
+.minigit/objects/2/
+.minigit/objects/3/
+```
+
+The commit directory contains the files that were staged at the time of that commit along with a `metadata.txt` file.
+
+For example:
+
+```text
+.minigit/objects/1/
+├── metadata.txt
+└── test.txt
+```
+
+The metadata file stores:
+
+```text
+ID: 1
+Message: First commit
+Timestamp: ...
+```
+
+This allows the `log` command to read each commit's metadata and display the history from newest to oldest.
+
+## Sample Session
+
+```text
+$ ./minigit init
+Initialized empty MiniGit repository.
+
+$ echo hello > test.txt
+
+$ ./minigit add test.txt
+Staged: test.txt
+
+$ ./minigit status
+Staged files:
+  test.txt
+
+$ ./minigit commit "First commit"
+Committed as 1: First commit
+
+$ ./minigit log
+ID: 1
+Message: First commit
+Timestamp: ...
+```
+
+After the commit, the staging index is cleared:
+
+```text
+.minigit/
+├── index
+└── objects/
+    └── 1/
+        ├── metadata.txt
+        └── test.txt
+```
+
+## Design Notes and Limitations
+
+MiniGit intentionally keeps the implementation lightweight and focuses on the fundamental staging-and-snapshot workflow.
+
+### 1. Partial Snapshots
+
+Each commit stores only the files that were staged using `add`.
+
+For example:
+
+```text
+minigit add file1.txt
+minigit commit "First commit"
+```
+
+The commit contains `file1.txt`, but other files in the working directory are not included.
+
+Therefore, each commit represents the **staged snapshot**, rather than automatically storing the entire project directory.
+
+### 2. No Content Hashing
+
+Unlike Git, MiniGit does not calculate SHA-1 or SHA-256 hashes for file contents.
+
+Commits are identified using sequential numeric IDs:
+
+```text
+1
+2
+3
+...
+```
+
+This makes the implementation easier to understand, but it means MiniGit does not provide Git's content-addressable storage, automatic duplicate detection, or cryptographic object identification.
+
+## Technologies Used
+
+* C++
+* C++17
+* `<filesystem>`
+* File I/O using `fstream`
+* Command-line arguments
+* Basic data structures such as `vector`
+
+## Project Structure
+
+```text
+MiniGit/
+│
+├── main.cpp
+└── .minigit/
+    ├── index
+    └── objects/
+        ├── 1/
+        ├── 2/
+        └── ...
+```
+
+The `.minigit` directory is generated automatically when `init` is executed and does not need to be created manually.
+
