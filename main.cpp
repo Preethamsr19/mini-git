@@ -24,6 +24,22 @@ void init() {
     cout << "Initialized empty MiniGit repository." << endl;
 }
 
+// Read all staged files from the index
+vector<string> readIndex() {
+    vector<string> lines;
+
+    ifstream in(REPO_DIR + "/index");
+
+    string line;
+    while (getline(in, line)) {
+        lines.push_back(line);
+    }
+
+    in.close();
+
+    return lines;
+}
+
 void add(const string &filename) {
     if (!fs::exists(REPO_DIR)) {
         cout << "Not a minigit repository. Run 'minigit init' first." << endl;
@@ -35,18 +51,10 @@ void add(const string &filename) {
         return;
     }
 
-    // 1. Read the index into a vector<string>
-    vector<string> staged;
-    ifstream in(REPO_DIR + "/index");
+    // Read the index
+    vector<string> staged = readIndex();
 
-    string line;
-    while (getline(in, line)) {
-        staged.push_back(line);
-    }
-
-    in.close();
-
-    // 2. Check if filename is already staged
+    // Check if file is already staged
     for (const string &file : staged) {
         if (file == filename) {
             cout << "Already staged: " << filename << endl;
@@ -54,12 +62,32 @@ void add(const string &filename) {
         }
     }
 
-    // 3. Append filename to the index file
+    // Append filename to index
     ofstream out(REPO_DIR + "/index", ios::app);
     out << filename << endl;
     out.close();
 
     cout << "Staged: " << filename << endl;
+}
+
+void status() {
+    if (!fs::exists(REPO_DIR)) {
+        cout << "Not a minigit repository. Run 'minigit init' first." << endl;
+        return;
+    }
+
+    vector<string> staged = readIndex();
+
+    if (staged.empty()) {
+        cout << "No files staged for commit." << endl;
+        return;
+    }
+
+    cout << "Staged files:" << endl;
+
+    for (const string &file : staged) {
+        cout << "  " << file << endl;
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -80,6 +108,9 @@ int main(int argc, char *argv[]) {
         }
 
         add(argv[2]);
+    }
+    else if (command == "status") {
+        status();
     }
     else {
         cout << "Unknown command: " << command << endl;
